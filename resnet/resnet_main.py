@@ -114,10 +114,10 @@ tf.flags.DEFINE_integer(
 
 tf.flags.DEFINE_string(
     'data_format',
-    default='channels_first',
+    default='channels_last',
     help=('A flag to override the data format used in the model. The value '
           'is either channels_first or channels_last. To run the network on '
-          'CPU, channels_last should be used.'))
+          'CPU or TPU, channels_last should be used.'))
 
 tf.flags.DEFINE_string(
     'export_dir',
@@ -134,7 +134,7 @@ BASE_LEARNING_RATE = 0.1     # base LR when batch size = 256
 MOMENTUM = 0.9
 WEIGHT_DECAY = 1e-4
 LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
-    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80), (0.000, 90)
+    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
 ]
 
 
@@ -248,9 +248,9 @@ def resnet_model_fn(features, labels, mode, params):
     # To log the loss, current learning rate, and epoch for Tensorboard, the
     # summary op needs to be run on the host CPU via host_call. host_call
     # expects [batch_size, ...] Tensors, thus reshape to introduce a batch
-    # dimension. These Tensors are implicitly broadcasted to
-    # [params['batch_size'], ].
-    gs_t = tf.reshape(tf.cast(global_step, tf.int32), [1])
+    # dimension. These Tensors are implicitly concatenated to
+    # [params['batch_size']].
+    gs_t = tf.reshape(global_step, [1])
     loss_t = tf.reshape(loss, [1])
     lr_t = tf.reshape(learning_rate, [1])
     ce_t = tf.reshape(current_epoch, [1])
@@ -268,16 +268,15 @@ def resnet_model_fn(features, labels, mode, params):
       element in the tuple passed to `host_call`.
 
       Args:
-        gs: `Tensor with shape `[batch, ]` for the global_step
-        loss: `Tensor` with shape `[batch, ]` for the training loss.
-        lr: `Tensor` with shape `[batch, ]` for the learning_rate.
-        ce: `Tensor` with shape `[batch, ]` for the current_epoch.
+        gs: `Tensor with shape `[batch]` for the global_step
+        loss: `Tensor` with shape `[batch]` for the training loss.
+        lr: `Tensor` with shape `[batch]` for the learning_rate.
+        ce: `Tensor` with shape `[batch]` for the current_epoch.
 
       Returns:
         List of summary ops to run on the CPU host.
       """
-      # Outfeed supports int32 but global_step is expected to be int64.
-      gs = tf.cast(tf.reduce_mean(gs), tf.int64)
+      gs = gs[0]
       with summary.create_file_writer(FLAGS.model_dir).as_default():
         with summary.always_record_summaries():
           summary.scalar('loss', tf.reduce_mean(loss), step=gs)
@@ -346,7 +345,7 @@ def main(unused_argv):
     else:
       tpu_cluster_resolver = (
           tf.contrib.cluster_resolver.TPUClusterResolver(
-              tpu_names=[FLAGS.tpu_name],
+              FLAGS.tpu_name,
               zone=FLAGS.tpu_zone,
               project=FLAGS.gcp_project))
       tpu_grpc_url = tpu_cluster_resolver.get_master()
