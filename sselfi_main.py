@@ -242,12 +242,41 @@ flags.DEFINE_bool(
 
 flags.DEFINE_integer('image_size', 224, 'The input image size.')
 
-# Learning rate schedule
-LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
-    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
-]
+flags.DEFINE_string(
+    'dropblock_groups', '',
+    help=('A string containing comma separated integers indicating ResNet '
+          'block groups to apply DropBlock. `3,4` means to apply DropBlock to '
+          'block groups 3 and 4. Use an empty string to not apply DropBlock to '
+          'any block group.'))
+flags.DEFINE_float(
+    'dropblock_keep_prob', default=0.9,
+    help=('keep_prob parameter of DropBlock. Will not be used if '
+          'dropblock_groups is empty.'))
+flags.DEFINE_integer(
+    'dropblock_size', default=7,
+    help=('size parameter of DropBlock. Will not be used if dropblock_groups '
+          'is empty.'))
 
-def learning_rate_schedule(current_epoch):
+
+# The input tensor is in the range of [0, 255], we need to scale them to the
+# range of [0, 1]
+MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
+STDDEV_RGB = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+
+
+def get_lr_schedule(train_steps, num_train_images, train_batch_size):
+  """learning rate schedule."""
+  steps_per_epoch = np.floor(num_train_images / train_batch_size)
+  train_epochs = train_steps / steps_per_epoch
+  return [  # (multiplier, epoch to start) tuples
+      (1.0, np.floor(5 / 90 * train_epochs)),
+      (0.1, np.floor(30 / 90 * train_epochs)),
+      (0.01, np.floor(60 / 90 * train_epochs)),
+      (0.001, np.floor(80 / 90 * train_epochs))
+  ]
+
+
+def learning_rate_schedule(train_steps, current_epoch):
   """Handles linear scaling rule, gradual warmup, and LR decay.
 
   The learning rate starts at 0, then it increases linearly per step.
@@ -258,6 +287,7 @@ def learning_rate_schedule(current_epoch):
     that we train for exactly 90 epochs for reproducibility.
 
   Args:
+    train_steps: `int` number of training steps.
     current_epoch: `Tensor` for current epoch.
 
   Returns:
@@ -265,9 +295,13 @@ def learning_rate_schedule(current_epoch):
   """
   scaled_lr = FLAGS.base_learning_rate * (FLAGS.train_batch_size / 256.0)
 
-  decay_rate = (scaled_lr * LR_SCHEDULE[0][0] *
-                current_epoch / LR_SCHEDULE[0][1])
-  for mult, start_epoch in LR_SCHEDULE:
+  lr_schedule = get_lr_schedule(
+      train_steps=train_steps,
+      num_train_images=FLAGS.num_train_images,
+      train_batch_size=FLAGS.train_batch_size)
+  decay_rate = (scaled_lr * lr_schedule[0][0] *
+                current_epoch / lr_schedule[0][1])
+  for mult, start_epoch in lr_schedule:
     decay_rate = tf.where(current_epoch < start_epoch,
                           decay_rate, scaled_lr * mult)
   return decay_rate
@@ -277,7 +311,8 @@ def resnet_model_fn(features, labels, mode, params):
   """The model_fn for ResNet to be used with TPUEstimator.
 
   Args:
-    features: `Tensor` of batched images.
+    features: `Tensor` of batched images. If transpose_input is enabled, it
+        is transposed to device layout and reshaped to 1D tensor.
     labels: `Tensor` of labels for the data samples
     mode: one of `tf.estimator.ModeKeys.{TRAIN,EVAL,PREDICT}`
     params: `dict` of parameters passed to the model from the TPUEstimator,
@@ -299,15 +334,43 @@ def resnet_model_fn(features, labels, mode, params):
     features = tf.transpose(features, [0, 3, 1, 2])
 
   if FLAGS.transpose_input and mode != tf.estimator.ModeKeys.PREDICT:
-    features = tf.reshape(features, [FLAGS.image_size, FLAGS.image_size, 3, -1])
+    image_size = tf.sqrt(tf.shape(features)[0] / (3 * tf.shape(labels)[0]))
+    features = tf.reshape(features, [image_size, image_size, 3, -1])
     features = tf.transpose(features, [3, 0, 1, 2])  # HWCN to NHWC
+
+  # Normalize the image to zero mean and unit variance.
+  features -= tf.constant(MEAN_RGB, shape=[1, 1, 3], dtype=features.dtype)
+  features /= tf.constant(STDDEV_RGB, shape=[1, 1, 3], dtype=features.dtype)
+
+  # DropBlock keep_prob for the 4 block groups of ResNet architecture.
+  # None means applying no DropBlock at the corresponding block group.
+  dropblock_keep_probs = [None] * 4
+  if FLAGS.dropblock_groups:
+    # Scheduled keep_prob for DropBlock.
+    train_steps = tf.cast(FLAGS.train_steps, tf.float32)
+    current_step = tf.cast(tf.train.get_global_step(), tf.float32)
+    current_ratio = current_step / train_steps
+    dropblock_keep_prob = (1 - current_ratio * (1 - FLAGS.dropblock_keep_prob))
+
+    # Computes DropBlock keep_prob for different block groups of ResNet.
+    dropblock_groups = [int(x) for x in FLAGS.dropblock_groups.split(',')]
+    for block_group in dropblock_groups:
+      if block_group < 1 or block_group > 4:
+        raise ValueError(
+            'dropblock_groups should be a comma separated list of integers '
+            'between 1 and 4 (dropblcok_groups: {}).'
+            .format(FLAGS.dropblock_groups))
+      dropblock_keep_probs[block_group - 1] = 1 - (
+          (1 - dropblock_keep_prob) / 4.0**(4 - block_group))
 
   # This nested function allows us to avoid duplicating the logic which
   # builds the network, for different values of --precision.
   def build_network():
     network = resnet_model.resnet_v1(
         resnet_depth=FLAGS.resnet_depth,
-        num_classes=FLAGS.bottleneck_size,
+        num_classes=FLAGS.num_label_classes,
+        dropblock_size=FLAGS.dropblock_size,
+        dropblock_keep_probs=dropblock_keep_probs,
         data_format=FLAGS.data_format)
     return network(
         inputs=features, is_training=(mode == tf.estimator.ModeKeys.TRAIN))
@@ -387,7 +450,7 @@ def resnet_model_fn(features, labels, mode, params):
       learning_rate = 0.0
       optimizer = lars_util.init_lars_optimizer(current_epoch)
     else:
-      learning_rate = learning_rate_schedule(current_epoch)
+      learning_rate = learning_rate_schedule(FLAGS.train_steps, current_epoch)
       optimizer = tf.train.MomentumOptimizer(
           learning_rate=learning_rate,
           momentum=FLAGS.momentum,
