@@ -333,13 +333,9 @@ def resnet_model_fn(features, labels, mode, params):
     features = tf.transpose(features, [0, 3, 1, 2])
 
   if FLAGS.transpose_input and mode != tf.estimator.ModeKeys.PREDICT:
-    image_size = tf.sqrt(tf.shape(features)[0] / (3 * tf.shape(labels)[0]))
-    features = tf.reshape(features, [image_size, image_size, 3, -1])
+    image_size = 224
+    features = tf.reshape(features, [image_size, image_size, 1, -1])
     features = tf.transpose(features, [3, 0, 1, 2])  # HWCN to NHWC
-
-  # Normalize the image to zero mean and unit variance.
-  features -= tf.constant(MEAN_RGB, shape=[1, 1, 3], dtype=features.dtype)
-  features /= tf.constant(STDDEV_RGB, shape=[1, 1, 3], dtype=features.dtype)
 
   # DropBlock keep_prob for the 4 block groups of ResNet architecture.
   # None means applying no DropBlock at the corresponding block group.
