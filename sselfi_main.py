@@ -400,7 +400,7 @@ def resnet_model_fn(features, labels, mode, params):
                                         transform=tf.nn.softplus)
 
   # Outputs mixture weights
-  out_p = tf.layes.dense(inputs=net, FLAGS.mixture_size, activation_fn=None)
+  out_p = tf.layers.dense(inputs=net, units=FLAGS.mixture_size, activation_fn=None)
 
   # Builds mixture model
   gmm = tfd.MixtureSameFamily(mixture_distribution=tfd.Categorical(logits=out_p),
