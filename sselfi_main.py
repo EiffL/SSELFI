@@ -618,65 +618,45 @@ def main(unused_argv):
 
   # Input pipelines are slightly different (with regards to shuffling and
   # preprocessing) between training and evaluation.
-  if FLAGS.bigtable_instance:
-    tf.logging.info('Using Bigtable dataset, table %s', FLAGS.bigtable_table)
-    select_train, select_eval = _select_tables_from_flags()
-    imagenet_train, imagenet_eval = [imagenet_input.ImageNetBigtableInput(
-        is_training=is_training,
-        use_bfloat16=use_bfloat16,
-        transpose_input=FLAGS.transpose_input,
-        selection=selection) for (is_training, selection) in
-                                     [(True, select_train),
-                                      (False, select_eval)]]
-  else:
-    if FLAGS.data_dir == FAKE_DATA_DIR:
-      tf.logging.info('Using fake dataset.')
-    else:
-      tf.logging.info('Using dataset: %s', FLAGS.data_dir)
-    imagenet_train, imagenet_eval = [
-        imagenet_input.ImageNetInput(
-            is_training=is_training,
-            data_dir=FLAGS.data_dir,
-            transpose_input=FLAGS.transpose_input,
-            cache=FLAGS.use_cache and is_training,
-            image_size=FLAGS.image_size,
-            num_parallel_calls=FLAGS.num_parallel_calls,
-            use_bfloat16=use_bfloat16) for is_training in [True, False]
-    ]
+  tf.logging.info('Using dataset: %s', FLAGS.data_dir)
+  camelus_train = camelus_input.CamelusInput( is_training=True,
+      data_dir=FLAGS.data_dir,
+      transpose_input=FLAGS.transpose_input,
+      use_bfloat16=use_bfloat16)
 
   steps_per_epoch = FLAGS.num_train_images // FLAGS.train_batch_size
   eval_steps = FLAGS.num_eval_images // FLAGS.eval_batch_size
 
   if FLAGS.mode == 'eval':
-
-    # Run evaluation when there's a new checkpoint
-    for ckpt in evaluation.checkpoints_iterator(
-        FLAGS.model_dir, timeout=FLAGS.eval_timeout):
-      tf.logging.info('Starting to evaluate.')
-      try:
-        start_timestamp = time.time()  # This time will include compilation time
-        eval_results = resnet_classifier.evaluate(
-            input_fn=imagenet_eval.input_fn,
-            steps=eval_steps,
-            checkpoint_path=ckpt)
-        elapsed_time = int(time.time() - start_timestamp)
-        tf.logging.info('Eval results: %s. Elapsed seconds: %d',
-                        eval_results, elapsed_time)
-
-        # Terminate eval job when final checkpoint is reached
-        current_step = int(os.path.basename(ckpt).split('-')[1])
-        if current_step >= FLAGS.train_steps:
-          tf.logging.info(
-              'Evaluation finished after training step %d', current_step)
-          break
-
-      except tf.errors.NotFoundError:
-        # Since the coordinator is on a different job than the TPU worker,
-        # sometimes the TPU worker does not finish initializing until long after
-        # the CPU job tells it to start evaluating. In this case, the checkpoint
-        # file could have been deleted already.
-        tf.logging.info(
-            'Checkpoint %s no longer exists, skipping checkpoint', ckpt)
+    #
+    # # Run evaluation when there's a new checkpoint
+    # for ckpt in evaluation.checkpoints_iterator(
+    #     FLAGS.model_dir, timeout=FLAGS.eval_timeout):
+    #   tf.logging.info('Starting to evaluate.')
+    #   try:
+    #     start_timestamp = time.time()  # This time will include compilation time
+    #     eval_results = resnet_classifier.evaluate(
+    #         input_fn=imagenet_eval.input_fn,
+    #         steps=eval_steps,
+    #         checkpoint_path=ckpt)
+    #     elapsed_time = int(time.time() - start_timestamp)
+    #     tf.logging.info('Eval results: %s. Elapsed seconds: %d',
+    #                     eval_results, elapsed_time)
+    #
+    #     # Terminate eval job when final checkpoint is reached
+    #     current_step = int(os.path.basename(ckpt).split('-')[1])
+    #     if current_step >= FLAGS.train_steps:
+    #       tf.logging.info(
+    #           'Evaluation finished after training step %d', current_step)
+    #       break
+    #
+    #   except tf.errors.NotFoundError:
+    #     # Since the coordinator is on a different job than the TPU worker,
+    #     # sometimes the TPU worker does not finish initializing until long after
+    #     # the CPU job tells it to start evaluating. In this case, the checkpoint
+    #     # file could have been deleted already.
+    #     tf.logging.info(
+    #         'Checkpoint %s no longer exists, skipping checkpoint', ckpt)
 
   else:   # FLAGS.mode == 'train' or FLAGS.mode == 'train_and_eval'
     current_step = estimator._load_global_step_from_checkpoint_dir(FLAGS.model_dir)  # pylint: disable=protected-access,line-too-long
@@ -704,7 +684,7 @@ def main(unused_argv):
                 output_dir=FLAGS.model_dir, tpu=FLAGS.tpu)
             )
       resnet_classifier.train(
-          input_fn=imagenet_train.input_fn,
+          input_fn=camelus_train.input_fn,
           max_steps=FLAGS.train_steps,
           hooks=hooks)
 
