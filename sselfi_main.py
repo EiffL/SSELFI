@@ -375,13 +375,13 @@ def resnet_model_fn(features, labels, mode, params):
   # Creates the convolutional part of the network, extracts summary statistic
   if FLAGS.precision == 'bfloat16':
     with tf.contrib.tpu.bfloat16_scope():
-      summary = build_network()
-    summary = tf.cast(summary, tf.float32)
+      summ = build_network()
+    summ= tf.cast(summ, tf.float32)
   elif FLAGS.precision == 'float32':
-    summary = build_network()
+    summ = build_network()
 
   # Mixture density layer for inference
-  net = tf.layers.dense(inputs=summary, units=512, activation=tf.nn.tanh)
+  net = tf.layers.dense(inputs=summ, units=512, activation=tf.nn.tanh)
 
   # Outputs mixture means
   out_mu = tf.layers.dense(inputs=net,
@@ -406,7 +406,7 @@ def resnet_model_fn(features, labels, mode, params):
 
   if mode == tf.estimator.ModeKeys.PREDICT:
     predictions = {
-        'summary': summary,
+        'summary': summ,
         'mu': out_mu,
         'p': out_p,
         'sigma': out_sigma,
