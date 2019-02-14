@@ -74,6 +74,7 @@ class CamelusInput(object):
     self.use_bfloat16 = use_bfloat16
     self.data_dir = data_dir
     self.transpose_input = transpose_input
+    self.cache = True
 
   def dataset_parser(self, value):
     """Parse an ImageNet record from a serialized string Tensor."""
@@ -130,11 +131,14 @@ class CamelusInput(object):
 
     # Shuffle the filenames to ensure better randomization.
     file_pattern = os.path.join(self.data_dir, 'train-*')
-    dataset = tf.data.Dataset.list_files(file_pattern, shuffle=self.is_training)
+    dataset = tf.data.Dataset.list_files(file_pattern, shuffle=False)
 
     is_training = False
-    if self.is_training:
+
+    if self.is_training and not self.cache:
       dataset = dataset.repeat()
+
+    if self.is_training:
       is_training = True
 
     def fetch_dataset(filename):
@@ -150,7 +154,12 @@ class CamelusInput(object):
     dataset = dataset.apply(
         tf.contrib.data.parallel_interleave(
             fetch_dataset, cycle_length=64, sloppy=True))
-    dataset = dataset.shuffle(1024)
+
+    if self.cache:
+      dataset = dataset.cache().apply(
+          tf.contrib.data.shuffle_and_repeat(1024 * 16))
+    else:
+      dataset = dataset.shuffle(1024)
 
     # Parse, preprocess, and batch the data in parallel
     dataset = dataset.apply(

@@ -210,7 +210,7 @@ flags.DEFINE_string(
     help=('Precision to use; one of: {bfloat16, float32}'))
 
 flags.DEFINE_float(
-    'base_learning_rate', default=0.1,
+    'base_learning_rate', default=0.01,
     help=('Base learning rate when train batch size is 256.'))
 
 flags.DEFINE_float(
