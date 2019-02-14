@@ -77,7 +77,7 @@ flags.DEFINE_string(
           ' stored.'))
 
 flags.DEFINE_integer(
-    'resnet_depth', default=50,
+    'resnet_depth', default=34,
     help=('Depth of ResNet model to use. Must be one of {18, 34, 50, 101, 152,'
           ' 200}. ResNet-18 and 34 use the pre-activation residual blocks'
           ' without bottleneck layers. The other models use pre-activation'
@@ -100,7 +100,7 @@ flags.DEFINE_integer(
     help=('Number of steps between collecting profiles if larger than 0'))
 
 flags.DEFINE_string(
-    'mode', default='train_and_eval',
+    'mode', default='train',
     help='One of {"train_and_eval", "train", "eval"}.')
 
 flags.DEFINE_integer(
