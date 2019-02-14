@@ -721,7 +721,7 @@ def main(unused_argv):
       tf.logging.info('Starting to export model.')
       resnet_classifier.export_saved_model(
           export_dir_base=FLAGS.export_dir,
-          serving_input_receiver_fn=imagenet_input.image_serving_input_fn)
+          serving_input_receiver_fn=camelus_input.map_serving_input_fn)
 
 
 if __name__ == '__main__':
