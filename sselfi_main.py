@@ -415,7 +415,6 @@ def resnet_model_fn(features, labels, mode, params):
     }
     return tf.contrib.tpu.TPUEstimatorSpec(
       mode=mode,
-      loss=loss,
       predictions=predictions,
       export_outputs={
             'inference': tf.estimator.export.PredictOutput(predictions)
