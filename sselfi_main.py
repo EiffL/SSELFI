@@ -363,7 +363,7 @@ def resnet_model_fn(features, labels, mode, params):
   def build_network():
     network = resnet_model.resnet_v1(
         resnet_depth=FLAGS.resnet_depth,
-        num_classes=FLAGS.num_label_classes,
+        num_classes=FLAGS.num_parameters,
         dropblock_size=FLAGS.dropblock_size,
         dropblock_keep_probs=dropblock_keep_probs,
         data_format=FLAGS.data_format)
