@@ -379,7 +379,7 @@ def resnet_model_fn(features, labels, mode, params):
     summary = build_network()
 
   # Mixture density layer for inference
-  net = tf.layers.dense(inputs=net, units=512, activation=tf.nn.tanh)
+  net = tf.layers.dense(inputs=summary, units=512, activation=tf.nn.tanh)
 
   # Outputs mixture means
   out_mu = tf.layers.dense(inputs=net,
