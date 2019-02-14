@@ -628,6 +628,7 @@ def main(unused_argv):
   eval_steps = FLAGS.num_eval_images // FLAGS.eval_batch_size
 
   if FLAGS.mode == 'eval':
+    pass
     #
     # # Run evaluation when there's a new checkpoint
     # for ckpt in evaluation.checkpoints_iterator(
