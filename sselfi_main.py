@@ -111,13 +111,13 @@ flags.DEFINE_integer(
           'This flag should be adjusted according to the --train_batch_size flag.'))
 
 flags.DEFINE_integer(
-    'train_batch_size', default=1024, help='Batch size for training.')
+    'train_batch_size', default=256, help='Batch size for training.')
 
 flags.DEFINE_integer(
     'eval_batch_size', default=1024, help='Batch size for evaluation.')
 
 flags.DEFINE_integer(
-    'num_train_images', default=1281167, help='Size of training data set.')
+    'num_train_images', default=32768, help='Size of training data set.')
 
 flags.DEFINE_integer(
     'num_eval_images', default=50000, help='Size of evaluation data set.')
