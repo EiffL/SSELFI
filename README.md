@@ -16,4 +16,5 @@ This  will create a VM instance and a TPU. Be careful, you are being charge as l
 $ ctpu pause
 ```
 
-Next step is to push the data to a google cloud bucket.
+
+## Training

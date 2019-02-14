@@ -519,8 +519,6 @@ def resnet_model_fn(features, labels, mode, params):
     train_op = None
 
   eval_metrics = None
-  if mode == tf.estimator.ModeKeys.EVAL:
-
   return tf.contrib.tpu.TPUEstimatorSpec(
       mode=mode,
       loss=loss,
