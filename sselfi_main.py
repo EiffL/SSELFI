@@ -31,6 +31,8 @@ import absl.logging as _logging  # pylint: disable=unused-import
 import tensorflow as tf
 import tensorflow_probability as tfp
 tfd = tfp.distributions
+
+import numpy as np
 import camelus_input
 from common import tpu_profiler_hook
 from official.resnet import lars_util
