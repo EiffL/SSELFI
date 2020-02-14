@@ -40,6 +40,8 @@ def preprocess_image(image_bytes, is_training=False, use_bfloat16=False):
   image = tf.reshape(image, [256, 256, 1])
   if use_bfloat16:
     image = tf.cast(image, tf.bfloat16)
+  # Apply central cropping to 224x224 size to avoid issues
+  image = tf.image.resize_with_crop_or_pad(image, 224, 224)
   return image
 
 def image_serving_input_fn():
@@ -75,7 +77,7 @@ class DESInput(object):
   def __init__(self,
                is_training,
                use_bfloat16,
-               image_size=256,
+               image_size=224,
                transpose_input=False,
                num_parallel_calls=8):
     self.image_preprocessing_fn = preprocess_image
@@ -223,7 +225,7 @@ class DESSVInput(DESInput):
                use_bfloat16,
                transpose_input,
                data_dir,
-               image_size=256,
+               image_size=224,
                num_parallel_calls=8,
                cache=False,
                dataset_split=None,
