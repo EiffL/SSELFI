@@ -37,7 +37,7 @@ def preprocess_image(image_bytes, is_training=False, use_bfloat16=False):
   """
   # TODO: Add data augmentation during training
   image = tf.io.decode_raw(image_bytes, out_type=tf.float32)
-  image = tf.reshape(image, [1, 256, 256, 1])
+  image = tf.reshape(image, [256, 256, 1])
   if use_bfloat16:
     image = tf.cast(image, tf.bfloat16)
   return image
