@@ -68,7 +68,7 @@ flags.DEFINE_integer(
     'num_train_images', default=468000, help='Size of training data set.')
 
 flags.DEFINE_integer(
-    'num_parameters', default=2, help='Number of classes, at least 2')
+    'num_label_classes', default=2, help='Number of classes, at least 2')
 
 flags.DEFINE_string(
     'data_format', default=None,
@@ -284,7 +284,7 @@ def resnet_model_fn(features, labels, mode, params):
   def build_network():
     network = resnet_model.resnet_v1(
         resnet_depth=params['resnet_depth'],
-        num_classes=params['num_parameters'],
+        num_classes=params['num_label_classes'],
         dropblock_size=params['dropblock_size'],
         dropblock_keep_probs=dropblock_keep_probs,
         data_format=params['data_format'])
@@ -301,7 +301,7 @@ def resnet_model_fn(features, labels, mode, params):
 
   # Now build a conditional density estimator from this density
   # Defines the chain of bijective transforms
-  n = params['num_parameters']
+  n = params['num_label_classes']
   chain = [ tfp.bijectors.MaskedAutoregressiveFlow(
                shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[256,256],
                                                                                  conditional_tensor=sum_stat)),
@@ -453,7 +453,7 @@ def main(unused_argv):
       params, FLAGS.config_file, is_strict=True)
   params = params_dict.override_params_dict(
       params, FLAGS.params_override, is_strict=True)
-  params['num_parameters'] = 2
+
   params = flags_to_params.override_params_from_input_flags(params, FLAGS)
 
   params.validate()
