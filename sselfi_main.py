@@ -253,7 +253,7 @@ def resnet_model_fn(features, labels, mode, params):
     features = tf.transpose(features, [0, 3, 1, 2])
 
   if params['transpose_input'] and mode != tf.estimator.ModeKeys.PREDICT:
-    image_size = tf.sqrt(tf.shape(features)[0] / (3 * tf.shape(labels)[0]))
+    image_size = params['image_size']
     features = tf.reshape(features, [image_size, image_size, 1, -1])
     features = tf.transpose(features, [3, 0, 1, 2])  # HWCN to NHWC
 
