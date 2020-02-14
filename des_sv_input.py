@@ -125,7 +125,7 @@ class DESInput(object):
         "params/S8": tf.io.FixedLenFeature((), tf.float32),
     }
 
-    parsed_example = tf.io.parse_single_example(value, data_fields)
+    parsed = tf.io.parse_single_example(value, data_fields)
     image_bytes = tf.reshape(parsed['wiener/encoded'], shape=[])
 
     image = self.image_preprocessing_fn(
