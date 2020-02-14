@@ -278,7 +278,7 @@ class DESSVInput(DESInput):
     """See base class."""
     if not self.data_dir:
       return value, tf.constant(0, tf.int32)
-    return super(ImageNetInput, self).dataset_parser(value)
+    return super(DESSVInput, self).dataset_parser(value)
 
   def make_source_dataset(self, index, num_hosts):
     """See base class."""
