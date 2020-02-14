@@ -245,7 +245,7 @@ def masked_autoregressive_conditional_template(hidden_layers,
           if tensorshape_util.is_fully_defined(x.shape) else tf.shape(x))
       if tensorshape_util.rank(x.shape) == 1:
         x = x[tf.newaxis, ...]
-      x = tf.concat([conditional_tensor, x],  axis=1)
+      x = tf.concat([conditional_tensor, x],  axis=-1)
       for i, units in enumerate(hidden_layers):
         x = masked_dense(
             inputs=x,
@@ -263,11 +263,11 @@ def masked_autoregressive_conditional_template(hidden_layers,
           *args,  # pylint: disable=keyword-arg-before-vararg
           **kwargs)
       if shift_only:
-        x = x[:, cond_depth:]
+        x = x[..., cond_depth:]
         x = tf.reshape(x, shape=input_shape)
         return x, None
       else:
-        x = x[:, 2*cond_depth:]
+        x = x[..., 2*cond_depth:]
       x = tf.reshape(x, shape=tf.concat([input_shape, [2]], axis=0))
       shift, log_scale = tf.unstack(x, num=2, axis=-1)
       which_clip = (
