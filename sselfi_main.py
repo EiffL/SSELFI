@@ -34,6 +34,7 @@ import tensorflow.compat.v2 as tf2
 
 import tensorflow_probability as tfp
 tfd = tfp.distributions
+tfb = tfp.bijectors
 
 from conditional_masked_autoregressive import ConditionalMaskedAutoregressiveFlow, masked_autoregressive_conditional_template
 from des_sv_input import DESSVInput
