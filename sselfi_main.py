@@ -68,7 +68,7 @@ flags.DEFINE_integer(
     'num_train_images', default=468000, help='Size of training data set.')
 
 flags.DEFINE_integer(
-    'num_parameters', default=None, help='Number of classes, at least 2')
+    'num_parameters', default=2, help='Number of classes, at least 2')
 
 flags.DEFINE_string(
     'data_format', default=None,
