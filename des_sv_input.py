@@ -92,7 +92,7 @@ class DESInput(object):
           tf.TensorShape([None, None, None, batch_size])))
       images = tf.reshape(images, [-1])
       labels.set_shape(labels.get_shape().merge_with(
-          tf.TensorShape([batch_size])))
+          tf.TensorShape([batch_size, 2])))
     else:
       images.set_shape(images.get_shape().merge_with(
           tf.TensorShape([batch_size, None, None, None])))
