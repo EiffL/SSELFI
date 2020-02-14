@@ -299,7 +299,7 @@ def resnet_model_fn(features, labels, mode, params):
     sum_stat = tf.cast(sum_stat, tf.float32)
   elif params['precision'] == 'float32':
     sum_stat = build_network()
-
+  print("HEEELOOO", sum_stat)
   # Now build a conditional density estimator from this density
   # Defines the chain of bijective transforms
   n = params['num_label_classes']
@@ -328,9 +328,7 @@ def resnet_model_fn(features, labels, mode, params):
 
   if mode == tf.estimator.ModeKeys.PREDICT:
     predictions = {
-        'summary': sum_stat,
-        'samples': distribution.sample(1024)
-
+        'summary': sum_stat
     }
     return tf.estimator.EstimatorSpec(
         mode=mode,
