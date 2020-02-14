@@ -233,13 +233,9 @@ def masked_autoregressive_conditional_template(hidden_layers,
     def _fn(x):
       """MADE parameterized via `masked_autoregressive_default_template`."""
       # TODO(b/67594795): Better support of dynamic shape.
-      input_depth = tf.compat.dimension_value(
-          tensorshape_util.with_rank_at_least(x.shape, 1)[-1])
       cond_depth = tf.compat.dimension_value(
           tensorshape_util.with_rank_at_least(conditional_tensor.shape, 1)[-1])
-      if input_depth is None:
-        raise NotImplementedError(
-            'Rightmost dimension must be known prior to graph execution.')
+
       input_shape = (
           np.int32(tensorshape_util.as_list(x.shape))
           if tensorshape_util.is_fully_defined(x.shape) else tf.shape(x))
@@ -247,6 +243,11 @@ def masked_autoregressive_conditional_template(hidden_layers,
         x = x[tf.newaxis, ...]
       print("ROROROOR", input_shape, x, cond_depth )
       x = tf.concat([conditional_tensor, x],  axis=-1)
+      input_depth = tf.compat.dimension_value(
+          tensorshape_util.with_rank_at_least(x.shape, 1)[-1])
+      if input_depth is None:
+        raise NotImplementedError(
+            'Rightmost dimension must be known prior to graph execution.')
       print("YO",  x )
       for i, units in enumerate(hidden_layers):
         x = masked_dense(
