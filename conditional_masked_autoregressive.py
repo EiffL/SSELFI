@@ -13,6 +13,7 @@ from tensorflow_probability.python.bijectors import bijector as bijector_lib
 from tensorflow_probability.python.internal import dtype_util
 from tensorflow_probability.python.internal import tensorshape_util
 from tensorflow_probability.python.math.numeric import clip_by_value_preserve_gradient
+from tensorflow_probability.python.bijectors import masked_dense
 
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 
