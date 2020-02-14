@@ -245,8 +245,9 @@ def masked_autoregressive_conditional_template(hidden_layers,
           if tensorshape_util.is_fully_defined(x.shape) else tf.shape(x))
       if tensorshape_util.rank(x.shape) == 1:
         x = x[tf.newaxis, ...]
-      print("ROROROOR", input_shape, x)
+      print("ROROROOR", input_shape, x, cond_depth )
       x = tf.concat([conditional_tensor, x],  axis=-1)
+      print("YO",  x )
       for i, units in enumerate(hidden_layers):
         x = masked_dense(
             inputs=x,
