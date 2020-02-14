@@ -135,8 +135,7 @@ class DESInput(object):
         is_training=self.is_training,
         use_bfloat16=self.use_bfloat16)
 
-    label = tf.stack([ tf.expand_dims(parsed['params/om'],axis=-1),
-                       tf.expand_dims(parsed['params/sigma8'],axis=-1)], axis=1)
+    label = [parsed['params/om'], parsed['params/sigma8']]
     return image, label
 
   @abc.abstractmethod
