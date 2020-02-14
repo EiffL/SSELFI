@@ -169,28 +169,84 @@ def masked_autoregressive_conditional_template(hidden_layers,
                                            activation=tf.nn.relu,
                                            log_scale_min_clip=-5.,
                                            log_scale_max_clip=3.,
-                                           log_scale_clip_gradient=True,
+                                           log_scale_clip_gradient=False,
                                            name=None,
                                            *args,  # pylint: disable=keyword-arg-before-vararg
                                            **kwargs):
-  name = name or "masked_autoregressive_default_template"
-  with tf.name_scope(name, values=[log_scale_min_clip, log_scale_max_clip]):
+  """Build the Masked Autoregressive Density Estimator (Germain et al., 2015).
+  This will be wrapped in a make_template to ensure the variables are only
+  created once. It takes the input and returns the `loc` ('mu' in [Germain et
+  al. (2015)][1]) and `log_scale` ('alpha' in [Germain et al. (2015)][1]) from
+  the MADE network.
+  Warning: This function uses `masked_dense` to create randomly initialized
+  `tf.Variables`. It is presumed that these will be fit, just as you would any
+  other neural architecture which uses `tf.layers.dense`.
+  #### About Hidden Layers
+  Each element of `hidden_layers` should be greater than the `input_depth`
+  (i.e., `input_depth = tf.shape(input)[-1]` where `input` is the input to the
+  neural network). This is necessary to ensure the autoregressivity property.
+  #### About Clipping
+  This function also optionally clips the `log_scale` (but possibly not its
+  gradient). This is useful because if `log_scale` is too small/large it might
+  underflow/overflow making it impossible for the `MaskedAutoregressiveFlow`
+  bijector to implement a bijection. Additionally, the `log_scale_clip_gradient`
+  `bool` indicates whether the gradient should also be clipped. The default does
+  not clip the gradient; this is useful because it still provides gradient
+  information (for fitting) yet solves the numerical stability problem. I.e.,
+  `log_scale_clip_gradient = False` means
+  `grad[exp(clip(x))] = grad[x] exp(clip(x))` rather than the usual
+  `grad[clip(x)] exp(clip(x))`.
+  Args:
+    hidden_layers: Python `list`-like of non-negative integer, scalars
+      indicating the number of units in each hidden layer. Default: `[512, 512].
+    shift_only: Python `bool` indicating if only the `shift` term shall be
+      computed. Default: `False`.
+    activation: Activation function (callable). Explicitly setting to `None`
+      implies a linear activation.
+    log_scale_min_clip: `float`-like scalar `Tensor`, or a `Tensor` with the
+      same shape as `log_scale`. The minimum value to clip by. Default: -5.
+    log_scale_max_clip: `float`-like scalar `Tensor`, or a `Tensor` with the
+      same shape as `log_scale`. The maximum value to clip by. Default: 3.
+    log_scale_clip_gradient: Python `bool` indicating that the gradient of
+      `tf.clip_by_value` should be preserved. Default: `False`.
+    name: A name for ops managed by this function. Default:
+      'masked_autoregressive_default_template'.
+    *args: `tf.layers.dense` arguments.
+    **kwargs: `tf.layers.dense` keyword arguments.
+  Returns:
+    shift: `Float`-like `Tensor` of shift terms (the 'mu' in
+      [Germain et al.  (2015)][1]).
+    log_scale: `Float`-like `Tensor` of log(scale) terms (the 'alpha' in
+      [Germain et al. (2015)][1]).
+  Raises:
+    NotImplementedError: if rightmost dimension of `inputs` is unknown prior to
+      graph execution.
+  #### References
+  [1]: Mathieu Germain, Karol Gregor, Iain Murray, and Hugo Larochelle. MADE:
+       Masked Autoencoder for Distribution Estimation. In _International
+       Conference on Machine Learning_, 2015. https://arxiv.org/abs/1502.03509
+  """
+  name = name or 'masked_autoregressive_conditional_template'
+  with tf.name_scope(name):
+
     def _fn(x):
       """MADE parameterized via `masked_autoregressive_default_template`."""
       # TODO(b/67594795): Better support of dynamic shape.
-      input_shape = (
-          np.int32(x.shape.as_list())
-          if x.shape.is_fully_defined() else tf.shape(x))
-      if len(x.shape) == 1:
-        x = x[tf.newaxis, ...]
-      x = tf.concat([conditional_tensor, x],  axis=1)
-      cond_depth = conditional_tensor.shape.with_rank_at_least(1)[-1].value
-      input_depth = x.shape.with_rank_at_least(1)[-1].value
+      input_depth = tf.compat.dimension_value(
+          tensorshape_util.with_rank_at_least(x.shape, 1)[-1])
+      cond_depth = tf.compat.dimension_value(
+          tensorshape_util.with_rank_at_least(conditional_tensor.shape, 1)[-1])
       if input_depth is None:
         raise NotImplementedError(
-            "Rightmost dimension must be known prior to graph execution.")
+            'Rightmost dimension must be known prior to graph execution.')
+      input_shape = (
+          np.int32(tensorshape_util.as_list(x.shape))
+          if tensorshape_util.is_fully_defined(x.shape) else tf.shape(x))
+      if tensorshape_util.rank(x.shape) == 1:
+        x = x[tf.newaxis, ...]
+      x = tf.concat([conditional_tensor, x],  axis=1)
       for i, units in enumerate(hidden_layers):
-        x = tfb.masked_dense(
+        x = masked_dense(
             inputs=x,
             units=units,
             num_blocks=input_depth,
@@ -198,7 +254,7 @@ def masked_autoregressive_conditional_template(hidden_layers,
             activation=activation,
             *args,  # pylint: disable=keyword-arg-before-vararg
             **kwargs)
-      x = tfb.masked_dense(
+      x = masked_dense(
           inputs=x,
           units=(1 if shift_only else 2) * input_depth,
           num_blocks=input_depth,
@@ -215,14 +271,8 @@ def masked_autoregressive_conditional_template(hidden_layers,
       shift, log_scale = tf.unstack(x, num=2, axis=-1)
       which_clip = (
           tf.clip_by_value
-          if log_scale_clip_gradient else _clip_by_value_preserve_grad)
+          if log_scale_clip_gradient else clip_by_value_preserve_gradient)
       log_scale = which_clip(log_scale, log_scale_min_clip, log_scale_max_clip)
       return shift, log_scale
-    return tf.make_template(name, _fn)
 
-def _clip_by_value_preserve_grad(x, clip_value_min, clip_value_max, name=None):
-  """Clips input while leaving gradient unaltered."""
-  with tf.name_scope(name, "clip_by_value_preserve_grad",
-                     [x, clip_value_min, clip_value_max]):
-    clip_x = tf.clip_by_value(x, clip_value_min, clip_value_max)
-    return x + tf.stop_gradient(clip_x - x)
+    return tf1.make_template(name, _fn)
