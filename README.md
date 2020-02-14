@@ -18,3 +18,4 @@ $ ctpu pause
 
 
 ## Training
+python sselfi_main.py --data_dir=gs://sselfi-camelus/training --model_dir=gs://sselfi-camelus/models/test2 --export_dir=gs://selfi-camelus/exports/test2
