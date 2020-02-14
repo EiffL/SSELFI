@@ -25,7 +25,7 @@ import os
 from absl import logging
 import tensorflow.compat.v1 as tf
 
-def preprocess_image(image_bytes, is_training=False):
+def preprocess_image(image_bytes, is_training=False, use_bfloat16=False):
   """Preprocesses the given image.
 
   Args:
@@ -38,6 +38,8 @@ def preprocess_image(image_bytes, is_training=False):
   # TODO: Add data augmentation during training
   image = tf.io.decode_raw(image_bytes, out_type=tf.float32)
   image = tf.reshape(image, [1, 256, 256, 1])
+  if use_bfloat16:
+    image = tf.cast(image, tf.bfloat16)
   return image
 
 def image_serving_input_fn():
@@ -131,7 +133,6 @@ class DESInput(object):
     image = self.image_preprocessing_fn(
         image_bytes=image_bytes,
         is_training=self.is_training,
-        image_size=self.image_size,
         use_bfloat16=self.use_bfloat16)
 
     label = tf.stack([ tf.expand_dims(parsed['params/omegam'],axis=-1),
