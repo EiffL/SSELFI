@@ -241,14 +241,12 @@ def masked_autoregressive_conditional_template(hidden_layers,
           if tensorshape_util.is_fully_defined(x.shape) else tf.shape(x))
       if tensorshape_util.rank(x.shape) == 1:
         x = x[tf.newaxis, ...]
-      print("ROROROOR", input_shape, x, cond_depth )
       x = tf.concat([conditional_tensor, x],  axis=-1)
       input_depth = tf.compat.dimension_value(
           tensorshape_util.with_rank_at_least(x.shape, 1)[-1])
       if input_depth is None:
         raise NotImplementedError(
             'Rightmost dimension must be known prior to graph execution.')
-      print("YO",  x )
       for i, units in enumerate(hidden_layers):
         x = masked_dense(
             inputs=x,
@@ -266,12 +264,10 @@ def masked_autoregressive_conditional_template(hidden_layers,
           *args,  # pylint: disable=keyword-arg-before-vararg
           **kwargs)
       if shift_only:
-        print("FINAL SHIFT",  x )
         x = x[..., cond_depth:]
         x = tf.reshape(x, shape=input_shape)
         return x, None
       else:
-        print("FINAL",  x )
         x = x[..., 2*cond_depth:]
       x = tf.reshape(x, shape=tf.concat([input_shape, [2]], axis=0))
       shift, log_scale = tf.unstack(x, num=2, axis=-1)

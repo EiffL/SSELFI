@@ -299,7 +299,7 @@ def resnet_model_fn(features, labels, mode, params):
     sum_stat = tf.cast(sum_stat, tf.float32)
   elif params['precision'] == 'float32':
     sum_stat = build_network()
-  print("HEEELOOO", sum_stat)
+
   # Now build a conditional density estimator from this density
   # Defines the chain of bijective transforms
   n = params['num_label_classes']
@@ -346,9 +346,9 @@ def resnet_model_fn(features, labels, mode, params):
 
   # Add weight decay to the loss for non-batch-normalization variables.
   if params['enable_lars']:
-    loss = cross_entropy
+    loss = loglik
   else:
-    loss = cross_entropy + params['weight_decay'] * tf.add_n([
+    loss = loglik + params['weight_decay'] * tf.add_n([
         tf.nn.l2_loss(v)
         for v in tf.trainable_variables()
         if 'batch_normalization' not in v.name
