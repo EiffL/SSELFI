@@ -130,7 +130,7 @@ class DESInput(object):
     }
 
     parsed = tf.io.parse_single_example(value, data_fields)
-    image_bytes = tf.reshape(parsed['wiener/encoded'], shape=[])
+    image_bytes = tf.reshape(parsed['KS/encoded'], shape=[])
 
     image = self.image_preprocessing_fn(
         image_bytes=image_bytes,
