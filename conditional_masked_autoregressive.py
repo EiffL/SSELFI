@@ -265,10 +265,12 @@ def masked_autoregressive_conditional_template(hidden_layers,
           *args,  # pylint: disable=keyword-arg-before-vararg
           **kwargs)
       if shift_only:
+        print("FINAL SHIFT",  x )
         x = x[..., cond_depth:]
         x = tf.reshape(x, shape=input_shape)
         return x, None
       else:
+        print("FINAL",  x )
         x = x[..., 2*cond_depth:]
       x = tf.reshape(x, shape=tf.concat([input_shape, [2]], axis=0))
       shift, log_scale = tf.unstack(x, num=2, axis=-1)
