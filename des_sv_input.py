@@ -116,8 +116,8 @@ class DESInput(object):
     data_fields = {
         "kappa/encoded": tf.io.FixedLenFeature((), tf.string),
         "kappa/format": tf.io.FixedLenFeature((), tf.string),
-        "wiener/encoded": tf.io.FixedLenFeature((), tf.string),
-        "wiener/format": tf.io.FixedLenFeature((), tf.string),
+        # "wiener/encoded": tf.io.FixedLenFeature((), tf.string),
+        # "wiener/format": tf.io.FixedLenFeature((), tf.string),
         "KS/encoded": tf.io.FixedLenFeature((), tf.string),
         "KS/format": tf.io.FixedLenFeature((), tf.string),
         "power/encoded": tf.io.FixedLenFeature((), tf.string),
