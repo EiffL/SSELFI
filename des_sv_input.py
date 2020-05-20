@@ -116,8 +116,8 @@ class DESInput(object):
     data_fields = {
         "kappa/encoded": tf.io.FixedLenFeature((), tf.string),
         "kappa/format": tf.io.FixedLenFeature((), tf.string),
-        # "wiener/encoded": tf.io.FixedLenFeature((), tf.string),
-        # "wiener/format": tf.io.FixedLenFeature((), tf.string),
+        "wiener/encoded": tf.io.FixedLenFeature((), tf.string),
+        "wiener/format": tf.io.FixedLenFeature((), tf.string),
         "KS/encoded": tf.io.FixedLenFeature((), tf.string),
         "KS/format": tf.io.FixedLenFeature((), tf.string),
         "power/encoded": tf.io.FixedLenFeature((), tf.string),
@@ -292,7 +292,7 @@ class DESSVInput(DESInput):
     data_list = []
     for n in range(10):
       for i in range(58):
-        data_list += [os.path.join(self.data_dir, 'cosmo%02d/training-%05d-of-00010'%(i, n))]
+        data_list += [os.path.join(self.data_dir, 'training_data%02d/training-%05d-of-00010'%(i, n))]
 
     # For multi-host training, we want each hosts to always process the same
     # subset of files.  Each host only sees a subset of the entire dataset,
