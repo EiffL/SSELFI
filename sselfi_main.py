@@ -633,7 +633,7 @@ def main(unused_argv):
       tf.logging.info('Starting to export model.')
       export_path = resnet_classifier.export_saved_model(
           export_dir_base=FLAGS.export_dir,
-          serving_input_receiver_fn=imagenet_input.image_serving_input_fn)
+          serving_input_receiver_fn=imagenet_train.image_serving_input_fn)
       if FLAGS.add_warmup_requests:
         inference_warmup.write_warmup_requests(
             export_path,
