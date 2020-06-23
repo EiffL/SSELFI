@@ -42,7 +42,7 @@ def preprocess_image(image_bytes, is_training=False, use_bfloat16=False):
     image = tf.cast(image, tf.bfloat16)
   # Apply central cropping to 224x224 size to avoid issues
   image = tf.image.resize_with_crop_or_pad(image, 224, 224)
-  
+
   # Apply clipping to guard against crazy KS values
   image = tf.clip_by_value(image,-0.5, 0.5)
   return image
@@ -228,7 +228,7 @@ class DESSVInput(DESInput):
                num_parallel_calls=8,
                cache=False,
                dataset_split=None,
-               shuffle_shards=False):
+               shuffle_shards=True):
     """Create an input from TFRecord files.
 
     Args:
@@ -289,8 +289,8 @@ class DESSVInput(DESInput):
 
     # Create the list of files for the dataset
     data_list = []
-    for n in range(10):
-      for i in range(74):
+    for i in range(74):
+      for n in range(10):
         data_list += [os.path.join(self.data_dir, 'training-%02d-%05d-of-00010'%(i, n))]
 
     # For multi-host training, we want each hosts to always process the same
