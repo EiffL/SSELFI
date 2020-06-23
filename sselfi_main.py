@@ -328,12 +328,12 @@ def resnet_model_fn(features, labels, mode, params):
   #         ]
 
   # Below is a Neural Spline Flow
-  chain = tfb.Chain([
+  chain = [
     tfb.Affine(scale_identity_multiplier=10),
     RealNVP(n//2, bijector_fn=ConditionalNeuralSpline(conditional_tensor=sum_stat, hidden_layers=[128, 128],name='nsf_1')),
     tfb.Permute(np.arange(n)[::-1]),
     RealNVP(n//2, bijector_fn=ConditionalNeuralSpline(conditional_tensor=sum_stat, hidden_layers=[128, 128],name='nsf_2')),
-    tfb.Affine(scale_identity_multiplier=0.1)])
+    tfb.Affine(scale_identity_multiplier=0.1)]
 
   bij = tfb.Chain(chain)
   prior  = tfd.MultivariateNormalDiag(loc=tf.zeros(n), scale_identity_multiplier=1.0)
