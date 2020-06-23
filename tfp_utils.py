@@ -46,20 +46,22 @@ def _ensure_at_least_1d(t):
 
 
 def _padded(t, lhs, rhs=None):
-  """Left pads and optionally right pads the innermost axis of `t`."""
-  lhs = tf.convert_to_tensor(lhs, dtype=t.dtype)
-  zeros = tf.zeros([tf.rank(t) - 1, 2], dtype=tf.int32)
-  lhs_paddings = tf.concat([zeros, [[1, 0]]], axis=0)
-  result = tf.pad(t, paddings=lhs_paddings, constant_values=lhs)
-  if rhs is not None:
-    rhs = tf.convert_to_tensor(rhs, dtype=t.dtype)
-    rhs_paddings = tf.concat([zeros, [[0, 1]]], axis=0)
-    result = tf.pad(result, paddings=rhs_paddings, constant_values=rhs)
-  return result
+  with tf.name_scope("_padded") as name:
+    """Left pads and optionally right pads the innermost axis of `t`."""
+    lhs = tf.convert_to_tensor(lhs, dtype=t.dtype)
+    zeros = tf.zeros([tf.rank(t) - 1, 2], dtype=tf.int32)
+    lhs_paddings = tf.concat([zeros, [[1, 0]]], axis=0)
+    result = tf.pad(t, paddings=lhs_paddings, constant_values=lhs)
+    if rhs is not None:
+      rhs = tf.convert_to_tensor(rhs, dtype=t.dtype)
+      rhs_paddings = tf.concat([zeros, [[0, 1]]], axis=0)
+      result = tf.pad(result, paddings=rhs_paddings, constant_values=rhs)
+    return result
 
 
 def _knot_positions(bin_sizes, range_min):
-  return _padded(tf.cumsum(bin_sizes, axis=-1) + range_min, lhs=range_min)
+  with tf.name_scope("knot_pos") as name:
+    return _padded(tf.cumsum(bin_sizes, axis=-1) + range_min, lhs=range_min)
 
 
 _SplineShared = collections.namedtuple(
@@ -473,66 +475,67 @@ class RationalQuadraticSpline(bijector.Bijector):
     Returns:
       data: A namedtuple with named fields containing shared computations.
     """
-    assert (x is None) != (y is None)
-    is_x = x is not None
+    with tf.name_scope("comput_shared") as name:
+      assert (x is None) != (y is None)
+      is_x = x is not None
 
-    range_min = tf.convert_to_tensor(self.range_min, name='range_min')
-    kx = _knot_positions(self.bin_widths, range_min)
-    ky = _knot_positions(self.bin_heights, range_min)
-    kd = _padded(_ensure_at_least_1d(self.knot_slopes), lhs=1, rhs=1)
-    kx_or_ky = kx if is_x else ky
-    kx_or_ky_min = kx_or_ky[..., 0]
-    kx_or_ky_max = kx_or_ky[..., -1]
-    x_or_y = x if is_x else y
-    out_of_bounds = tf.zeros_like(x_or_y) #; (x_or_y <= kx_or_ky_min) | (x_or_y >= kx_or_ky_max)
-    x_or_y = x_or_y # tf.where(out_of_bounds, kx_or_ky_min, x_or_y)
+      range_min = tf.convert_to_tensor(self.range_min, name='range_min')
+      kx = _knot_positions(self.bin_widths, range_min)
+      ky = _knot_positions(self.bin_heights, range_min)
+      kd = _padded(_ensure_at_least_1d(self.knot_slopes), lhs=1, rhs=1)
+      kx_or_ky = kx if is_x else ky
+      kx_or_ky_min = kx_or_ky[..., 0]
+      kx_or_ky_max = kx_or_ky[..., -1]
+      x_or_y = x if is_x else y
+      out_of_bounds = tf.zeros_like(x_or_y) #; (x_or_y <= kx_or_ky_min) | (x_or_y >= kx_or_ky_max)
+      x_or_y = x_or_y # tf.where(out_of_bounds, kx_or_ky_min, x_or_y)
 
-    shape = functools.reduce(
-        tf.broadcast_dynamic_shape,
-        (
-            tf.shape(x_or_y[..., tf.newaxis]),  # Add a n_knots dim.
-            tf.shape(kx),
-            tf.shape(ky),
-            tf.shape(kd)))
+      shape = functools.reduce(
+          tf.broadcast_dynamic_shape,
+          (
+              tf.shape(x_or_y[..., tf.newaxis]),  # Add a n_knots dim.
+              tf.shape(kx),
+              tf.shape(ky),
+              tf.shape(kd)))
 
-    bc_x_or_y = tf.broadcast_to(x_or_y, shape[:-1])
-    bc_kx = tf.broadcast_to(kx, shape)
-    bc_ky = tf.broadcast_to(ky, shape)
-    bc_kd = tf.broadcast_to(kd, shape)
-    bc_kx_or_ky = bc_kx if is_x else bc_ky
-    indices = tf.maximum(
-        tf.zeros([], dtype=tf.int64),
-        tf.searchsorted(
-            bc_kx_or_ky[..., :-1],
-            bc_x_or_y[..., tf.newaxis],
-            side='right',
-            out_type=tf.int64) - 1)
+      bc_x_or_y = tf.broadcast_to(x_or_y, shape[:-1])
+      bc_kx = tf.broadcast_to(kx, shape)
+      bc_ky = tf.broadcast_to(ky, shape)
+      bc_kd = tf.broadcast_to(kd, shape)
+      bc_kx_or_ky = bc_kx if is_x else bc_ky
+      indices = tf.maximum(
+          tf.zeros([], dtype=tf.int32),
+          tf.searchsorted(
+              bc_kx_or_ky[..., :-1],
+              bc_x_or_y[..., tf.newaxis],
+              side='right',
+              out_type=tf.int32) - 1)
 
-    def gather_squeeze(params, indices):
-      rank = tensorshape_util.rank(indices.shape)
-      if rank is None:
-        raise ValueError('`indices` must have statically known rank.')
-      return tf.gather(params, indices, axis=-1, batch_dims=rank - 1)[..., 0]
+      def gather_squeeze(params, indices):
+        rank = tensorshape_util.rank(indices.shape)
+        if rank is None:
+          raise ValueError('`indices` must have statically known rank.')
+        return tf.gather(params, indices, axis=-1, batch_dims=rank - 1)[..., 0]
 
-    x_k = gather_squeeze(bc_kx, indices)
-    x_kp1 = gather_squeeze(bc_kx, indices + 1)
-    y_k = gather_squeeze(bc_ky, indices)
-    y_kp1 = gather_squeeze(bc_ky, indices + 1)
-    d_k = gather_squeeze(bc_kd, indices)
-    d_kp1 = gather_squeeze(bc_kd, indices + 1)
-    h_k = y_kp1 - y_k
-    w_k = x_kp1 - x_k
-    s_k = h_k / w_k
+      x_k = gather_squeeze(bc_kx, indices)
+      x_kp1 = gather_squeeze(bc_kx, indices + 1)
+      y_k = gather_squeeze(bc_ky, indices)
+      y_kp1 = gather_squeeze(bc_ky, indices + 1)
+      d_k = gather_squeeze(bc_kd, indices)
+      d_kp1 = gather_squeeze(bc_kd, indices + 1)
+      h_k = y_kp1 - y_k
+      w_k = x_kp1 - x_k
+      s_k = h_k / w_k
 
-    return _SplineShared(
-        out_of_bounds=out_of_bounds,
-        x_k=x_k,
-        y_k=y_k,
-        d_k=d_k,
-        d_kp1=d_kp1,
-        h_k=h_k,
-        w_k=w_k,
-        s_k=s_k)
+      return _SplineShared(
+          out_of_bounds=out_of_bounds,
+          x_k=x_k,
+          y_k=y_k,
+          d_k=d_k,
+          d_kp1=d_kp1,
+          h_k=h_k,
+          w_k=w_k,
+          s_k=s_k)
 
   def _forward(self, x):
     """Compute the forward transformation (Appendix A.1)."""
