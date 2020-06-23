@@ -58,9 +58,6 @@ common_hparams_flags.define_common_hparams_flags()
 FLAGS = flags.FLAGS
 
 flags.DEFINE_integer(
-      'train_batch_size', default=256, help='Batch size for training.')
-
-flags.DEFINE_integer(
     'resnet_depth', default=34,
     help=('Depth of ResNet model to use. Must be one of {18, 34, 50, 101, 152,'
           ' 200}. ResNet-18 and 34 use the pre-activation residual blocks'
