@@ -57,6 +57,8 @@ common_hparams_flags.define_common_hparams_flags()
 
 FLAGS = flags.FLAGS
 
+flags.DEFINE_integer(
+      'train_batch_size', default=256, help='Batch size for training.')
 
 flags.DEFINE_integer(
     'resnet_depth', default=34,
@@ -68,7 +70,7 @@ flags.DEFINE_integer(
           ' running out of memory.'))
 
 flags.DEFINE_integer(
-    'num_train_images', default=468000, help='Size of training data set.')
+    'num_train_images', default=185000, help='Size of training data set.')
 
 flags.DEFINE_integer(
     'num_label_classes', default=2, help='Number of classes, at least 2')
@@ -145,7 +147,7 @@ flags.DEFINE_bool(
           ' in addition to "serve" only metagraph.'))
 
 flags.DEFINE_float(
-    'base_learning_rate', default=None,
+    'base_learning_rate', default=0.01,
     help=('Base learning rate when train batch size is 256.'))
 
 flags.DEFINE_float(
@@ -310,22 +312,22 @@ def resnet_model_fn(features, labels, mode, params):
   chain = [ tfp.bijectors.MaskedAutoregressiveFlow(
                shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
                                                                                  conditional_tensor=sum_stat,
+                                                                                 shift_only=False)),
+            tfb.Permute(np.arange(n)[::-1]),
+            tfp.bijectors.MaskedAutoregressiveFlow(
+               shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
+                                                                                 conditional_tensor=sum_stat,
+                                                                                 shift_only=False)),
+            tfb.Permute(np.arange(n)[::-1]),
+            tfp.bijectors.MaskedAutoregressiveFlow(
+               shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
+                                                                                 conditional_tensor=sum_stat,
                                                                                  shift_only=True)),
             tfb.Permute(np.arange(n)[::-1]),
             tfp.bijectors.MaskedAutoregressiveFlow(
                shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
                                                                                  conditional_tensor=sum_stat,
                                                                                  shift_only=True)),
-            # tfb.Permute(np.arange(n)[::-1]),
-            # tfp.bijectors.MaskedAutoregressiveFlow(
-            #    shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[256,256],
-            #                                                                      conditional_tensor=sum_stat,
-            #                                                                      shift_only=False)),
-            # tfb.Permute(np.arange(n)[::-1]),
-            # tfp.bijectors.MaskedAutoregressiveFlow(
-            #    shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[256,256],
-            #                                                                      conditional_tensor=sum_stat,
-            #                                                                      shift_only=False)),
           ]
 
   # Below is a Neural Spline Flow

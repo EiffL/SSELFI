@@ -168,9 +168,9 @@ def masked_autoregressive_conditional_template(hidden_layers,
                                             conditional_tensor,
                                            shift_only=False,
                                            activation=tf.nn.relu,
-                                           log_scale_min_clip=-5.,
+                                           log_scale_min_clip=-4.,
                                            log_scale_max_clip=3.,
-                                           log_scale_clip_gradient=False,
+                                           log_scale_clip_gradient=True,
                                            name=None,
                                            *args,  # pylint: disable=keyword-arg-before-vararg
                                            **kwargs):
