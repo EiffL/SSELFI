@@ -310,12 +310,12 @@ def resnet_model_fn(features, labels, mode, params):
   chain = [ tfp.bijectors.MaskedAutoregressiveFlow(
                shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
                                                                                  conditional_tensor=sum_stat,
-                                                                                 shift_only=False)),
+                                                                                 shift_only=True)),
             tfb.Permute(np.arange(n)[::-1]),
             tfp.bijectors.MaskedAutoregressiveFlow(
                shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
                                                                                  conditional_tensor=sum_stat,
-                                                                                 shift_only=False)),
+                                                                                 shift_only=True)),
             # tfb.Permute(np.arange(n)[::-1]),
             # tfp.bijectors.MaskedAutoregressiveFlow(
             #    shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[256,256],
