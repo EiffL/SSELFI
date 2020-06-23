@@ -484,7 +484,7 @@ class RationalQuadraticSpline(bijector.Bijector):
     kx_or_ky_min = kx_or_ky[..., 0]
     kx_or_ky_max = kx_or_ky[..., -1]
     x_or_y = x if is_x else y
-    out_of_bounds = (x_or_y <= kx_or_ky_min) | (x_or_y >= kx_or_ky_max)
+    out_of_bounds = tf.zeros_like(x_or_y) #; (x_or_y <= kx_or_ky_min) | (x_or_y >= kx_or_ky_max)
     x_or_y = x_or_y # tf.where(out_of_bounds, kx_or_ky_min, x_or_y)
 
     shape = functools.reduce(
