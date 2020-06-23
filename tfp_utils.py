@@ -507,6 +507,8 @@ class RationalQuadraticSpline(bijector.Bijector):
         bc_ky = tf.broadcast_to(ky, shape)
         bc_kd = tf.broadcast_to(kd, shape)
         bc_kx_or_ky = bc_kx if is_x else bc_ky
+
+      with tf.name_scope("piece1b"):
         indices = tf.maximum(
             tf.zeros([], dtype=tf.int32),
             tf.searchsorted(
