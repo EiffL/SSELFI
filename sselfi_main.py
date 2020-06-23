@@ -40,6 +40,7 @@ from conditional_masked_autoregressive import ConditionalMaskedAutoregressiveFlo
 from conditional_neural_spline_flow import ConditionalNeuralSpline
 from tfp_utils import RealNVP
 from des_sv_input import DESSVInput, image_serving_input_fn
+import tensorflow_hub as hub
 
 from common import inference_warmup
 from common import tpu_profiler_hook
@@ -631,16 +632,18 @@ def main(unused_argv):
       # The guide to serve a exported TensorFlow model is at:
       #    https://www.tensorflow.org/serving/serving_basic
       tf.logging.info('Starting to export model.')
-      export_path = resnet_classifier.export_saved_model(
-          export_dir_base=FLAGS.export_dir,
-          serving_input_receiver_fn=image_serving_input_fn)
-      if FLAGS.add_warmup_requests:
-        inference_warmup.write_warmup_requests(
-            export_path,
-            FLAGS.model_name,
-            params.image_size,
-            batch_sizes=FLAGS.inference_batch_sizes,
-            image_format='JPEG')
+      exporter = hub.LatestModuleExporter("tf_hub", image_serving_input_fn)
+      exporter.export(resnet_classifier, FLAGS.export_dir, resnet_classifier.latest_checkpoint())
+      # export_path = resnet_classifier.export_saved_model(
+      #     export_dir_base=FLAGS.export_dir,
+      #     serving_input_receiver_fn=image_serving_input_fn)
+      # if FLAGS.add_warmup_requests:
+      #   inference_warmup.write_warmup_requests(
+      #       export_path,
+      #       FLAGS.model_name,
+      #       params.image_size,
+      #       batch_sizes=FLAGS.inference_batch_sizes,
+      #       image_format='JPEG')
 
 
 if __name__ == '__main__':
