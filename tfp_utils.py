@@ -485,7 +485,7 @@ class RationalQuadraticSpline(bijector.Bijector):
     kx_or_ky_max = kx_or_ky[..., -1]
     x_or_y = x if is_x else y
     out_of_bounds = (x_or_y <= kx_or_ky_min) | (x_or_y >= kx_or_ky_max)
-    x_or_y = tf.where(out_of_bounds, kx_or_ky_min, x_or_y)
+    x_or_y = x_or_y # tf.where(out_of_bounds, kx_or_ky_min, x_or_y)
 
     shape = functools.reduce(
         tf.broadcast_dynamic_shape,
@@ -541,13 +541,13 @@ class RationalQuadraticSpline(bijector.Bijector):
     spline_val = (
         d.y_k + ((d.h_k * (d.s_k * relx**2 + d.d_k * relx * (1 - relx))) /
                  (d.s_k + (d.d_kp1 + d.d_k - 2 * d.s_k) * relx * (1 - relx))))
-    y_val = tf.where(d.out_of_bounds, x, spline_val)
+    y_val = spline_val #tf.where(d.out_of_bounds, x, spline_val)
     return y_val
 
   def _inverse(self, y):
     """Compute the inverse transformation (Appendix A.3)."""
     d = self._compute_shared(y=y)
-    rely = tf.where(d.out_of_bounds, tf.zeros_like(y), y - d.y_k)
+    rely = y - d.y_k # tf.where(d.out_of_bounds, tf.zeros_like(y), y - d.y_k)
     term2 = rely * (d.d_kp1 + d.d_k - 2 * d.s_k)
     # These terms are the a, b, c terms of the quadratic formula.
     a = d.h_k * (d.s_k - d.d_k) + term2
@@ -557,20 +557,20 @@ class RationalQuadraticSpline(bijector.Bijector):
     relx = tf.where(
         tf.equal(rely, 0), tf.zeros_like(a),
         (2 * c) / (-b - tf.sqrt(b**2 - 4 * a * c)))
-    return tf.where(d.out_of_bounds, y, relx * d.w_k + d.x_k)
+    return  relx * d.w_k + d.x_k #tf.where(d.out_of_bounds, y, relx * d.w_k + d.x_k)
 
   def _forward_log_det_jacobian(self, x):
     """Compute the forward derivative (Appendix A.2)."""
     d = self._compute_shared(x=x)
     relx = (x - d.x_k) / d.w_k
-    relx = tf.where(d.out_of_bounds, 0.5*tf.ones_like(x), relx)
+    relx = relx # tf.where(d.out_of_bounds, 0.5*tf.ones_like(x), relx)
     grad = (
         2 * tf.math.log(d.s_k) +
         tf.math.log(d.d_kp1 * relx**2 + 2 * d.s_k * relx * (1 - relx) +  # newln
                     d.d_k * (1 - relx)**2) -
         2 * tf.math.log((d.d_kp1 + d.d_k - 2 * d.s_k) * relx *
                         (1 - relx) + d.s_k))
-    return tf.where(d.out_of_bounds, tf.zeros_like(grad), grad)
+    return grad # tf.where(d.out_of_bounds, tf.zeros_like(grad), grad)
 
   def _parameter_control_dependencies(self, is_init):
     """Validate parameters."""
