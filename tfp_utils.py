@@ -509,13 +509,12 @@ class RationalQuadraticSpline(bijector.Bijector):
         bc_kx_or_ky = bc_kx if is_x else bc_ky
 
       with tf.name_scope("piece1b"):
-        indices = tf.maximum(
-            tf.zeros([], dtype=tf.int32),
+        indices = tf.clip_by_value(
             tf.searchsorted(
                 bc_kx_or_ky[..., :-1],
                 bc_x_or_y[..., tf.newaxis],
                 side='right',
-                out_type=tf.int32) - 1)
+                out_type=tf.int32) - 1, 0, 1000)
 
       def gather_squeeze(params, indices):
         rank = tensorshape_util.rank(indices.shape)
