@@ -49,20 +49,12 @@ def preprocess_image(image_bytes, is_training=False, use_bfloat16=False):
 
 def image_serving_input_fn():
   """Serving input fn for raw images."""
-
-  def _preprocess_image(image_bytes):
-    """Preprocess a single raw image."""
-    image = preprocess_image(image_bytes=image_bytes, is_training=False)
-    return image
-
-  image_bytes_list = tf.placeholder(
-      shape=[None],
-      dtype=tf.string,
+  input_image = tf.placeholder(
+      shape=[None, 224, 224, 1],
+      dtype=tf.float32,
   )
-  images = tf.map_fn(
-      _preprocess_image, image_bytes_list, back_prop=False, dtype=tf.float32)
   return tf.estimator.export.TensorServingInputReceiver(
-      features=images, receiver_tensors=image_bytes_list)
+      features=input_image, receiver_tensors=input_image)
 
 class DESInput(object):
   """Base class for DES input_fn generator.
