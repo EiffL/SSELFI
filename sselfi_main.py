@@ -68,7 +68,7 @@ flags.DEFINE_integer(
           ' running out of memory.'))
 
 flags.DEFINE_integer(
-    'num_train_images', default=185000, help='Size of training data set.')
+    'num_train_images', default=166500, help='Size of training data set.')
 
 flags.DEFINE_integer(
     'num_label_classes', default=2, help='Number of classes, at least 2')

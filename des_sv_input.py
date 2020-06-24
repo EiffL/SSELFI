@@ -286,6 +286,8 @@ class DESSVInput(DESInput):
       for i in range(74):
         for n in range(9):
           data_list += [os.path.join(self.data_dir, 'training-%02d-%05d-of-00010'%(i, n))]
+          from random import shuffle
+          shuffle(data_list) # Just to try to mix it as best we can
     else:
       # For testing we use 10% of the dataset
       for i in range(74):
