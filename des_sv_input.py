@@ -281,9 +281,15 @@ class DESSVInput(DESInput):
 
     # Create the list of files for the dataset
     data_list = []
-    for i in range(74):
-      for n in range(10):
-        data_list += [os.path.join(self.data_dir, 'training-%02d-%05d-of-00010'%(i, n))]
+    if self.is_training:
+      # For training we use 90% of the dataset
+      for i in range(74):
+        for n in range(9):
+          data_list += [os.path.join(self.data_dir, 'training-%02d-%05d-of-00010'%(i, n))]
+    else:
+      # For testing we use 10% of the dataset
+      for i in range(74):
+          data_list += [os.path.join(self.data_dir, 'training-%02d-%05d-of-00010'%(i, 9))]
 
     # For multi-host training, we want each hosts to always process the same
     # subset of files.  Each host only sees a subset of the entire dataset,
