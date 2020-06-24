@@ -71,6 +71,9 @@ flags.DEFINE_integer(
     'num_train_images', default=166500, help='Size of training data set.')
 
 flags.DEFINE_integer(
+    'num_eval_images', default=18432, help='Size of testing data set.')
+
+flags.DEFINE_integer(
     'num_label_classes', default=2, help='Number of classes, at least 2')
 
 flags.DEFINE_string(
