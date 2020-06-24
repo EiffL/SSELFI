@@ -128,7 +128,7 @@ class DESInput(object):
         is_training=self.is_training,
         use_bfloat16=self.use_bfloat16)
 
-    label = [parsed['params/om'], parsed['params/sigma8']]
+    label = [parsed['params/om'], parsed['params/S8']]
     return image, label
 
   @abc.abstractmethod
