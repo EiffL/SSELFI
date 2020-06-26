@@ -220,7 +220,7 @@ class DESSVInput(DESInput):
                num_parallel_calls=8,
                cache=False,
                dataset_split=None,
-               shuffle_shards=True):
+               shuffle_shards=False):
     """Create an input from TFRecord files.
 
     Args:
@@ -283,11 +283,11 @@ class DESSVInput(DESInput):
     data_list = []
     if self.is_training:
       # For training we use 90% of the dataset
-      for i in range(74):
-        for n in range(9):
+      for n in range(9):
+        for i in range(74):
           data_list += [os.path.join(self.data_dir, 'training-%02d-%05d-of-00010'%(i, n))]
-          from random import shuffle
-          shuffle(data_list) # Just to try to mix it as best we can
+          #from random import shuffle
+          #shuffle(data_list) # Just to try to mix it as best we can
     else:
       # For testing we use 10% of the dataset
       for i in range(74):
@@ -311,7 +311,7 @@ class DESSVInput(DESInput):
     # Read the data from disk in parallel
     dataset = dataset.apply(
         tf.data.experimental.parallel_interleave(
-            fetch_dataset, cycle_length=64, sloppy=True))
+            fetch_dataset, cycle_length=74, sloppy=True))
 
     if self.cache:
       dataset = dataset.cache().apply(
