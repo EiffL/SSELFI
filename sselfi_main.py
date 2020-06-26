@@ -309,27 +309,37 @@ def resnet_model_fn(features, labels, mode, params):
   # Defines the chain of bijective transforms
   n = params['num_label_classes']
 
+  net = tf.layers.dense(sum_stat, 256, activation=tf.nn.leaky_relu)
+  net = tf.layers.dense(net, 256, activation=tf.nn.leaky_relu)
+
+  # Simple multivariate gaussian model
+  mu = tf.layers.dense(net, n)
+  scale_tril = tf.layers.dense(net, n)
+  scale_tril = tfb.FillScaleTriL(diag_bijector=tfb.Softplus(),
+                                 diag_shift=1e-4)(scale_tril)
+  distribution = tfd.MultivariateNormalTriL(loc=mu,
+                                            scale_tril=scale_tril)
   # Below is the chain for a MAF
-  chain = [ tfp.bijectors.MaskedAutoregressiveFlow(
-               shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
-                                                                                 conditional_tensor=sum_stat,
-                                                                                 shift_only=False)),
-            tfb.Permute(np.arange(n)[::-1]),
-            tfp.bijectors.MaskedAutoregressiveFlow(
-               shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
-                                                                                 conditional_tensor=sum_stat,
-                                                                                 shift_only=False)),
-            tfb.Permute(np.arange(n)[::-1]),
-            tfp.bijectors.MaskedAutoregressiveFlow(
-               shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
-                                                                                 conditional_tensor=sum_stat,
-                                                                                 shift_only=True)),
-            tfb.Permute(np.arange(n)[::-1]),
-            tfp.bijectors.MaskedAutoregressiveFlow(
-               shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
-                                                                                 conditional_tensor=sum_stat,
-                                                                                 shift_only=True)),
-          ]
+  # chain = [ tfp.bijectors.MaskedAutoregressiveFlow(
+  #              shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
+  #                                                                                conditional_tensor=sum_stat,
+  #                                                                                shift_only=False)),
+  #           tfb.Permute(np.arange(n)[::-1]),
+  #           tfp.bijectors.MaskedAutoregressiveFlow(
+  #              shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
+  #                                                                                conditional_tensor=sum_stat,
+  #                                                                                shift_only=False)),
+  #           tfb.Permute(np.arange(n)[::-1]),
+  #           tfp.bijectors.MaskedAutoregressiveFlow(
+  #              shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
+  #                                                                                conditional_tensor=sum_stat,
+  #                                                                                shift_only=True)),
+  #           tfb.Permute(np.arange(n)[::-1]),
+  #           tfp.bijectors.MaskedAutoregressiveFlow(
+  #              shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
+  #                                                                                conditional_tensor=sum_stat,
+  #                                                                                shift_only=True)),
+  #         ]
 
   # Below is a Neural Spline Flow
   # chain = [
@@ -339,13 +349,15 @@ def resnet_model_fn(features, labels, mode, params):
   #   RealNVP(n//2, bijector_fn=ConditionalNeuralSpline(conditional_tensor=sum_stat, hidden_layers=[128, 128],name='nsf_2')),
   #   tfb.Affine(scale_identity_multiplier=0.1)]
 
-  bij = tfb.Chain(chain)
-  prior  = tfd.MultivariateNormalDiag(loc=tf.zeros(n), scale_identity_multiplier=1.0)
-  distribution = tfd.TransformedDistribution(prior, bijector=bij)
+  # bij = tfb.Chain(chain)
+  # prior  = tfd.MultivariateNormalDiag(loc=tf.zeros(n), scale_identity_multiplier=1.0)
+  # distribution = tfd.TransformedDistribution(prior, bijector=bij)
 
   if mode == tf.estimator.ModeKeys.PREDICT:
     predictions = {
-        'summary': sum_stat
+        'summary': sum_stat,
+        'mu': mu,
+        'scale_tril': scale_tril
     }
     return tf.estimator.EstimatorSpec(
         mode=mode,
