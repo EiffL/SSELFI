@@ -309,14 +309,16 @@ def resnet_model_fn(features, labels, mode, params):
   # Defines the chain of bijective transforms
   n = params['num_label_classes']
 
-  net = tf.layers.dense(sum_stat, 256, activation=tf.nn.leaky_relu)
-  net = tf.layers.dense(net, 256, activation=tf.nn.leaky_relu)
+  net = tf.layers.dense(sum_stat, 512, activation=tf.nn.leaky_relu)
+  net = tf.layers.dense(net, 512, activation=tf.nn.leaky_relu)
 
   # Simple multivariate gaussian model
+  size_sigma = (n *(n +1) // 2)
   mu = tf.layers.dense(net, n)
-  scale_tril = tf.layers.dense(net, n)
-  scale_tril = tfb.FillScaleTriL(diag_bijector=tfb.Softplus(),
-                                 diag_shift=1e-4)(scale_tril)
+  sigma = tf.layers.dense(net, size_sigma)
+  scale_tril = tfd.matrix_diag_transform(tfd.fill_triangular(sigma),
+                                        transform=tf.nn.softplus)
+
   distribution = tfd.MultivariateNormalTriL(loc=mu,
                                             scale_tril=scale_tril)
   # Below is the chain for a MAF
