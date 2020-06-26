@@ -317,7 +317,7 @@ def resnet_model_fn(features, labels, mode, params):
   mu = tf.layers.dense(net, n)
   sigma = tf.layers.dense(net, size_sigma)
   scale_tril = tfd.matrix_diag_transform(tfd.fill_triangular(sigma),
-                                        transform=tf.nn.softplus)
+                                        transform=lambda x: tf.nn.softplus(x) + 1e-4)
 
   distribution = tfd.MultivariateNormalTriL(loc=mu,
                                             scale_tril=scale_tril)
