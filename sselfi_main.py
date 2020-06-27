@@ -346,11 +346,11 @@ def resnet_model_fn(features, labels, mode, params):
   distribution = tfd.TransformedDistribution(prior, bijector=bij)
 
   if mode == tf.estimator.ModeKeys.PREDICT:
-    dummy = distribution.log_prob(tf.zeros(shape=[1, n]))
+    dummy = distribution.log_prob(sum_stat)
     predictions = {
         'dummy': dummy,
         'summary': sum_stat,
-        'samples': distribution.sample()
+        'samples': distribution.sample(256) # TODO: find a better way to sample 
     }
     return tf.estimator.EstimatorSpec(
         mode=mode,
