@@ -350,7 +350,7 @@ def resnet_model_fn(features, labels, mode, params):
     predictions = {
         'dummy': dummy,
         'summary': sum_stat,
-        'samples': distribution.sample(256) # TODO: find a better way to sample 
+        'samples': distribution.sample(256) # TODO: find a better way to sample
     }
     return tf.estimator.EstimatorSpec(
         mode=mode,
@@ -362,6 +362,9 @@ def resnet_model_fn(features, labels, mode, params):
   # If necessary, in the model_fn, use params['batch_size'] instead the batch
   # size flags (--train_batch_size or --eval_batch_size).
   batch_size = params['batch_size']   # pylint: disable=unused-variable
+
+  # Add a little bit of scatter to the labels to smooth out the distribution
+  labels += 0.02*tf.random_normal(shape=[batch_size, n]) # TODO: add flag to enable this
 
   # Compute loss function with some L2 regularization
   loglik = - tf.reduce_mean(distribution.log_prob(labels),axis=0)
