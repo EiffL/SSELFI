@@ -160,8 +160,8 @@ flags.DEFINE_float(
     help=('Weight decay coefficiant for l2 regularization.'))
 
 flags.DEFINE_float(
-    'label_smoothing', default=None,
-    help=('Label smoothing parameter used in the softmax_cross_entropy'))
+    'label_smoothing', default=0.,
+    help=('Label smoothing parameter used in the loss function'))
 
 flags.DEFINE_bool('enable_lars',
                   default=None,
@@ -309,8 +309,7 @@ def resnet_model_fn(features, labels, mode, params):
   # Defines the chain of bijective transforms
   n = params['num_label_classes']
 
-  net = tf.layers.dense(sum_stat, 512, activation=tf.nn.leaky_relu)
-  net = tf.layers.dense(net, 32, activation=tf.nn.leaky_relu)
+  net = sum_stat
 
   # Below is the chain for a MAF
   chain = [ tfp.bijectors.MaskedAutoregressiveFlow(
@@ -347,8 +346,11 @@ def resnet_model_fn(features, labels, mode, params):
   distribution = tfd.TransformedDistribution(prior, bijector=bij)
 
   if mode == tf.estimator.ModeKeys.PREDICT:
+    dummy = distribution.log_prob(sum_stat)
     predictions = {
-        'summary': sum_stat
+        'dummy': dummy,
+        'summary': sum_stat,
+        'samples': distribution.sample(256) # TODO: find a better way to sample
     }
     return tf.estimator.EstimatorSpec(
         mode=mode,
@@ -360,6 +362,10 @@ def resnet_model_fn(features, labels, mode, params):
   # If necessary, in the model_fn, use params['batch_size'] instead the batch
   # size flags (--train_batch_size or --eval_batch_size).
   batch_size = params['batch_size']   # pylint: disable=unused-variable
+
+  # Add a little bit of scatter to the labels to smooth out the distribution
+  if (params['label_smoothing'] > 0.) and (mode == tf.estimator.ModeKeys.TRAIN):
+    labels += params['label_smoothing']*tf.random_normal(shape=[batch_size, n])
 
   # Compute loss function with some L2 regularization
   loglik = - tf.reduce_mean(distribution.log_prob(labels),axis=0)
@@ -613,7 +619,7 @@ def main(unused_argv):
         next_checkpoint = min(current_step + FLAGS.steps_per_eval,
                               params.train_steps)
         resnet_classifier.train(
-            input_fn=imagenet_train.input_fn, max_steps=next_checkpoint)
+            input_fn=imagenet_train.input_fn, max_steps=int(next_checkpoint))
         current_step = next_checkpoint
 
         tf.logging.info('Finished training up to step %d. Elapsed seconds %d.',
