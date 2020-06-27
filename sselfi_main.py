@@ -364,8 +364,8 @@ def resnet_model_fn(features, labels, mode, params):
   batch_size = params['batch_size']   # pylint: disable=unused-variable
 
   # Add a little bit of scatter to the labels to smooth out the distribution
-  if params['label_smoothing'] > 0.:
-    labels += params['label_smoothing']*tf.random_normal(shape=[batch_size, n]) 
+  if (params['label_smoothing'] > 0.) and (mode == tf.estimator.ModeKeys.TRAIN):
+    labels += params['label_smoothing']*tf.random_normal(shape=[batch_size, n])
 
   # Compute loss function with some L2 regularization
   loglik = - tf.reduce_mean(distribution.log_prob(labels),axis=0)
