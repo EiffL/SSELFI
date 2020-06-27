@@ -309,25 +309,28 @@ def resnet_model_fn(features, labels, mode, params):
   # Defines the chain of bijective transforms
   n = params['num_label_classes']
 
+  net = tf.layers.dense(sum_stat, 512, activation=tf.nn.leaky_relu)
+  net = tf.layers.dense(net, 32, activation=tf.nn.leaky_relu)
+
   # Below is the chain for a MAF
   chain = [ tfp.bijectors.MaskedAutoregressiveFlow(
                shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
-                                                                                 conditional_tensor=sum_stat,
+                                                                                 conditional_tensor=net,
                                                                                  shift_only=False)),
             tfb.Permute(np.arange(n)[::-1]),
             tfp.bijectors.MaskedAutoregressiveFlow(
                shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
-                                                                                 conditional_tensor=sum_stat,
+                                                                                 conditional_tensor=net,
                                                                                  shift_only=False)),
             tfb.Permute(np.arange(n)[::-1]),
             tfp.bijectors.MaskedAutoregressiveFlow(
                shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
-                                                                                 conditional_tensor=sum_stat,
+                                                                                 conditional_tensor=net,
                                                                                  shift_only=True)),
             tfb.Permute(np.arange(n)[::-1]),
             tfp.bijectors.MaskedAutoregressiveFlow(
                shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
-                                                                                 conditional_tensor=sum_stat,
+                                                                                 conditional_tensor=net,
                                                                                  shift_only=True)),
           ]
 

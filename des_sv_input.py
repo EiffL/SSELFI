@@ -313,7 +313,7 @@ class DESSVInput(DESInput):
 
     if self.cache:
       dataset = dataset.cache().apply(
-          tf.data.experimental.shuffle_and_repeat(1024 * 16))
+          tf.data.experimental.shuffle_and_repeat(1024 * 64))
     else:
-      dataset = dataset.shuffle(1024)
+      dataset = dataset.shuffle(1024 )
     return dataset
