@@ -618,7 +618,7 @@ def main(unused_argv):
         next_checkpoint = min(current_step + FLAGS.steps_per_eval,
                               params.train_steps)
         resnet_classifier.train(
-            input_fn=imagenet_train.input_fn, max_steps=next_checkpoint)
+            input_fn=imagenet_train.input_fn, max_steps=int(next_checkpoint))
         current_step = next_checkpoint
 
         tf.logging.info('Finished training up to step %d. Elapsed seconds %d.',
