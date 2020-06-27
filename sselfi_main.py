@@ -309,8 +309,7 @@ def resnet_model_fn(features, labels, mode, params):
   # Defines the chain of bijective transforms
   n = params['num_label_classes']
 
-  net = tf.layers.dense(sum_stat, 512, activation=tf.nn.leaky_relu)
-  net = tf.layers.dense(net, 32, activation=tf.nn.leaky_relu)
+  net = sum_stat
 
   # Below is the chain for a MAF
   chain = [ tfp.bijectors.MaskedAutoregressiveFlow(
@@ -348,7 +347,8 @@ def resnet_model_fn(features, labels, mode, params):
 
   if mode == tf.estimator.ModeKeys.PREDICT:
     predictions = {
-        'summary': sum_stat
+        'summary': sum_stat,
+        'samples': distribution.sample()
     }
     return tf.estimator.EstimatorSpec(
         mode=mode,
