@@ -160,8 +160,8 @@ flags.DEFINE_float(
     help=('Weight decay coefficiant for l2 regularization.'))
 
 flags.DEFINE_float(
-    'label_smoothing', default=None,
-    help=('Label smoothing parameter used in the softmax_cross_entropy'))
+    'label_smoothing', default=0.,
+    help=('Label smoothing parameter used in the loss function'))
 
 flags.DEFINE_bool('enable_lars',
                   default=None,
@@ -364,7 +364,8 @@ def resnet_model_fn(features, labels, mode, params):
   batch_size = params['batch_size']   # pylint: disable=unused-variable
 
   # Add a little bit of scatter to the labels to smooth out the distribution
-  labels += 0.02*tf.random_normal(shape=[batch_size, n]) # TODO: add flag to enable this
+  if params['label_smoothing'] > 0.:
+    labels += params['label_smoothing']*tf.random_normal(shape=[batch_size, n]) 
 
   # Compute loss function with some L2 regularization
   loglik = - tf.reduce_mean(distribution.log_prob(labels),axis=0)
