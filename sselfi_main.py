@@ -67,6 +67,10 @@ flags.DEFINE_integer(
           ' more memory and may require reducing --train_batch_size to prevent'
           ' running out of memory.'))
 
+flags.DEFINE_string(
+    'training_loss', default='VMIM',
+    help='One of {"VMIM", "MSE", "MAE"}.')
+
 flags.DEFINE_integer(
     'num_train_images', default=166500, help='Size of training data set.')
 
@@ -309,48 +313,46 @@ def resnet_model_fn(features, labels, mode, params):
   # Defines the chain of bijective transforms
   n = params['num_label_classes']
 
-  net = sum_stat
+  if params['training_loss'] == 'VMIM':
+    net = sum_stat
+    # Below is the chain for a MAF
+    chain = [ tfp.bijectors.MaskedAutoregressiveFlow(
+                 shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
+                                                                                   conditional_tensor=net,
+                                                                                   shift_only=False)),
+              tfb.Permute(np.arange(n)[::-1]),
+              tfp.bijectors.MaskedAutoregressiveFlow(
+                 shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
+                                                                                   conditional_tensor=net,
+                                                                                   shift_only=False)),
+              tfb.Permute(np.arange(n)[::-1]),
+              tfp.bijectors.MaskedAutoregressiveFlow(
+                 shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
+                                                                                   conditional_tensor=net,
+                                                                                   shift_only=True)),
+              tfb.Permute(np.arange(n)[::-1]),
+              tfp.bijectors.MaskedAutoregressiveFlow(
+                 shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
+                                                                                   conditional_tensor=net,
+                                                                                   shift_only=True)),
+            ]
 
-  # Below is the chain for a MAF
-  chain = [ tfp.bijectors.MaskedAutoregressiveFlow(
-               shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
-                                                                                 conditional_tensor=net,
-                                                                                 shift_only=False)),
-            tfb.Permute(np.arange(n)[::-1]),
-            tfp.bijectors.MaskedAutoregressiveFlow(
-               shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
-                                                                                 conditional_tensor=net,
-                                                                                 shift_only=False)),
-            tfb.Permute(np.arange(n)[::-1]),
-            tfp.bijectors.MaskedAutoregressiveFlow(
-               shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
-                                                                                 conditional_tensor=net,
-                                                                                 shift_only=True)),
-            tfb.Permute(np.arange(n)[::-1]),
-            tfp.bijectors.MaskedAutoregressiveFlow(
-               shift_and_log_scale_fn=masked_autoregressive_conditional_template(hidden_layers=[128,128],
-                                                                                 conditional_tensor=net,
-                                                                                 shift_only=True)),
-          ]
+    bij = tfb.Chain(chain)
+    prior  = tfd.MultivariateNormalDiag(loc=tf.zeros(n), scale_identity_multiplier=1.0)
+    distribution = tfd.TransformedDistribution(prior, bijector=bij)
 
-  # Below is a Neural Spline Flow
-  # chain = [
-  #   tfb.Affine(scale_identity_multiplier=10),
-  #   RealNVP(n//2, bijector_fn=ConditionalNeuralSpline(conditional_tensor=sum_stat, hidden_layers=[128, 128],name='nsf_1')),
-  #   tfb.Permute(np.arange(n)[::-1]),
-  #   RealNVP(n//2, bijector_fn=ConditionalNeuralSpline(conditional_tensor=sum_stat, hidden_layers=[128, 128],name='nsf_2')),
-  #   tfb.Affine(scale_identity_multiplier=0.1)]
-
-  bij = tfb.Chain(chain)
-  prior  = tfd.MultivariateNormalDiag(loc=tf.zeros(n), scale_identity_multiplier=1.0)
-  distribution = tfd.TransformedDistribution(prior, bijector=bij)
+    # Compute loss function with some L2 regularization
+    loss = - tf.reduce_mean(distribution.log_prob(labels),axis=0)
+  elif params['training_loss'] == 'MAE':
+    loss = tf.keras.losses.mae(labels, sum_stat)
+  elif params['training_loss'] == 'MSE':
+    loss = tf.keras.losses.mse(labels, sum_stat)
+  else:
+    raise NotImplementedError
 
   if mode == tf.estimator.ModeKeys.PREDICT:
-    #  dummy = distribution.log_prob(sum_stat)
     predictions = {
-    #   'dummy': dummy,
         'summary': sum_stat,
-    #   'samples': distribution.sample(256) # TODO: find a better way to sample
     }
     return tf.estimator.EstimatorSpec(
         mode=mode,
@@ -367,14 +369,11 @@ def resnet_model_fn(features, labels, mode, params):
   if (params['label_smoothing'] > 0.) and (mode == tf.estimator.ModeKeys.TRAIN):
     labels += params['label_smoothing']*tf.random_normal(shape=[batch_size, n])
 
-  # Compute loss function with some L2 regularization
-  loglik = - tf.reduce_mean(distribution.log_prob(labels),axis=0)
-
   # Add weight decay to the loss for non-batch-normalization variables.
   if params['enable_lars']:
-    loss = loglik
+    loss = loss
   else:
-    loss = loglik + params['weight_decay'] * tf.add_n([
+    loss = loss + params['weight_decay'] * tf.add_n([
         tf.nn.l2_loss(v)
         for v in tf.trainable_variables()
         if 'batch_normalization' not in v.name
