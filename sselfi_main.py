@@ -344,9 +344,9 @@ def resnet_model_fn(features, labels, mode, params):
     # Compute loss function with some L2 regularization
     loss = - tf.reduce_mean(distribution.log_prob(labels),axis=0)
   elif params['training_loss'] == 'MAE':
-    loss = tf.keras.losses.mae(labels, sum_stat)
+    loss = tf.reduce_mean(tf.keras.losses.mae(labels, sum_stat),axis=0)
   elif params['training_loss'] == 'MSE':
-    loss = tf.keras.losses.mse(labels, sum_stat)
+    loss = tf.reduce_mean(tf.keras.losses.mse(labels, sum_stat),axis=0)
   else:
     raise NotImplementedError
 
@@ -481,7 +481,7 @@ def main(unused_argv):
       params, FLAGS.params_override, is_strict=True)
 
   params = flags_to_params.override_params_from_input_flags(params, FLAGS)
-  
+
   params.validate()
   params.lock()
 
