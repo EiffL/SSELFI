@@ -471,15 +471,17 @@ def resnet_model_fn(features, labels, mode, params):
 
 
 def main(unused_argv):
+  BASE_CFG = resnet_config.RESNET_CFG
+  BASE_CFG['training_loss'] = 'VMIM'
   params = params_dict.ParamsDict(
-      resnet_config.RESNET_CFG, resnet_config.RESNET_RESTRICTIONS)
+      BASE_CFG, resnet_config.RESNET_RESTRICTIONS)
   params = params_dict.override_params_dict(
       params, FLAGS.config_file, is_strict=True)
   params = params_dict.override_params_dict(
       params, FLAGS.params_override, is_strict=True)
 
   params = flags_to_params.override_params_from_input_flags(params, FLAGS)
-
+  
   params.validate()
   params.lock()
 
