@@ -41,7 +41,12 @@ def preprocess_image(image_bytes, is_training=False, use_bfloat16=False):
   if use_bfloat16:
     image = tf.cast(image, tf.bfloat16)
   # Apply central cropping to 224x224 size to avoid issues
-  image = tf.image.resize_with_crop_or_pad(image, 224, 224)
+  if is_training:
+    image = tf.image.random_flip_left_right(image)
+    image = tf.image.random_flip_up_down(image)
+    image = tf.image.random_crop(image, [224, 224, 1])
+  else:
+    image = tf.image.resize_with_crop_or_pad(image, 224, 224)
 
   # Apply clipping to guard against crazy KS values
   image = tf.clip_by_value(image,-0.5, 0.5)
