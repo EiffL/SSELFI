@@ -320,6 +320,8 @@ def resnet_model_fn(features, labels, mode, params):
             'inference': tf.estimator.export.PredictOutput(predictions)
         })
 
+  n = params['num_label_classes']
+
   # If necessary, in the model_fn, use params['batch_size'] instead the batch
   # size flags (--train_batch_size or --eval_batch_size).
   batch_size = params['batch_size']   # pylint: disable=unused-variable
@@ -331,8 +333,6 @@ def resnet_model_fn(features, labels, mode, params):
 
   # Now build a conditional density estimator from this density
   # Defines the chain of bijective transforms
-  n = params['num_label_classes']
-
   if params['training_loss'] == 'VMIM':
     net = sum_stat
     # Below is the chain for a MAF
