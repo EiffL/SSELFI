@@ -309,6 +309,26 @@ def resnet_model_fn(features, labels, mode, params):
   elif params['precision'] == 'float32':
     sum_stat = build_network()
 
+  if mode == tf.estimator.ModeKeys.PREDICT:
+    predictions = {
+        'summary': sum_stat,
+    }
+    return tf.estimator.EstimatorSpec(
+        mode=mode,
+        predictions=predictions,
+        export_outputs={
+            'inference': tf.estimator.export.PredictOutput(predictions)
+        })
+
+  # If necessary, in the model_fn, use params['batch_size'] instead the batch
+  # size flags (--train_batch_size or --eval_batch_size).
+  batch_size = params['batch_size']   # pylint: disable=unused-variable
+
+  # Add a little bit of scatter to the labels to smooth out the distribution
+  if (params['label_smoothing'] > 0.) and (mode == tf.estimator.ModeKeys.TRAIN):
+    labels += params['label_smoothing']*tf.random_normal(shape=[batch_size, n])
+
+
   # Now build a conditional density estimator from this density
   # Defines the chain of bijective transforms
   n = params['num_label_classes']
@@ -349,25 +369,6 @@ def resnet_model_fn(features, labels, mode, params):
     loss = tf.reduce_mean(tf.keras.losses.mse(labels, sum_stat),axis=0)
   else:
     raise NotImplementedError
-
-  if mode == tf.estimator.ModeKeys.PREDICT:
-    predictions = {
-        'summary': sum_stat,
-    }
-    return tf.estimator.EstimatorSpec(
-        mode=mode,
-        predictions=predictions,
-        export_outputs={
-            'inference': tf.estimator.export.PredictOutput(predictions)
-        })
-
-  # If necessary, in the model_fn, use params['batch_size'] instead the batch
-  # size flags (--train_batch_size or --eval_batch_size).
-  batch_size = params['batch_size']   # pylint: disable=unused-variable
-
-  # Add a little bit of scatter to the labels to smooth out the distribution
-  if (params['label_smoothing'] > 0.) and (mode == tf.estimator.ModeKeys.TRAIN):
-    labels += params['label_smoothing']*tf.random_normal(shape=[batch_size, n])
 
   # Add weight decay to the loss for non-batch-normalization variables.
   if params['enable_lars']:
